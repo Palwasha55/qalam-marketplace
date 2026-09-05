@@ -20,13 +20,13 @@ a{color:inherit;} img{max-width:100%;display:block;}
 .wrap{max-width:1120px;margin:0 auto;padding:0 32px;}
 @media(max-width:640px){.wrap{padding:0 20px;}}
 
-header{position:sticky;top:0;z-index:40;background:rgba(247,245,240,0.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+header{position:sticky;top:0;z-index:100;background:rgba(247,245,240,0.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
 nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;max-width:1120px;margin:0 auto;flex-wrap:wrap;gap:10px;}
 .logo{font-family:'Fraunces',serif;font-weight:700;font-size:1.3rem;color:var(--indigo-deep);text-decoration:none;}
 .navlinks{display:flex;gap:26px;font-size:0.92rem;font-weight:500;align-items:center;flex-wrap:wrap;}
-.navlinks a, .navlinks button{text-decoration:none;opacity:0.75;cursor:pointer;background:none;border:none;font:inherit;color:inherit;}
+.navlinks a, .navlinks button{text-decoration:none;opacity:0.75;cursor:pointer;background:none;border:none;font:inherit;color:inherit;position:relative;z-index:101;}
 .navlinks a:hover, .navlinks button:hover{opacity:1;}
-.navcta{background:var(--indigo-deep);color:var(--paper);padding:9px 18px;border-radius:3px;text-decoration:none;font-size:0.88rem;font-weight:600;border:none;cursor:pointer;}
+.navcta{background:var(--indigo-deep);color:var(--paper);padding:9px 18px;border-radius:3px;text-decoration:none;font-size:0.88rem;font-weight:600;border:none;cursor:pointer;position:relative;z-index:101;}
 .pill{font-size:0.78rem;background:var(--gold-soft);color:var(--indigo-deep);padding:3px 10px;border-radius:20px;font-weight:700;}
 
 .hero{background:var(--indigo-deep);color:#fff;padding:64px 0 48px;}
@@ -81,7 +81,7 @@ footer{background:var(--indigo-deep);color:#9DA2B4;padding:38px 0;font-size:0.85
 
 <header>
   <nav>
-    <a href="#" class="logo">Qalam</a>
+    <a href="#" class="logo" onclick="showView('browse');return false;">Qalam</a>
     <div class="navlinks" id="navlinks">
       <a href="#" onclick="showView('browse');return false;">Browse talent</a>
       <a href="#" onclick="showView('jobs');return false;">Browse jobs</a>
@@ -371,7 +371,7 @@ async function loadMyJobs() {
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
     const data = await api('/api/jobs/mine');
-    if (!data.jobs.length) { el.innerHTML = '<div class="empty">You haven\\'t posted any jobs yet.</div>'; return; }
+    if (!data.jobs.length) { el.innerHTML = '<div class="empty">You have not posted any jobs yet.</div>'; return; }
     let html = '';
     for (const j of data.jobs) {
       let apps = [];
@@ -396,7 +396,7 @@ async function loadFreelancerDash() {
   const banner = document.getElementById('verify-banner');
   banner.innerHTML = ME.verified
     ? '<div class="msg ok">Your profile is verified and visible to clients.</div>'
-    : '<div class="msg err">Your profile is pending verification. You can browse jobs now, but you\\'ll be able to apply once verified.</div>';
+    : '<div class="msg err">Your profile is pending verification. You can browse jobs now, but you will be able to apply once verified.</div>';
 
   const el = document.getElementById('freelancer-job-list');
   el.innerHTML = '<div class="empty">Loading…</div>';
