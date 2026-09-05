@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qalam — Admin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap');
+:root{--indigo-deep:#0D1729;--paper:#F7F5F0;--gold:#C9A227;--teal:#1B4B43;--ink:#1A1A22;--line:rgba(20,33,61,0.14);--danger:#8B2E2E;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Public Sans',sans-serif;background:var(--paper);color:var(--ink);}
+h1,h2{font-family:'Fraunces',serif;font-weight:600;color:var(--indigo-deep);}
+.wrap{max-width:760px;margin:0 auto;padding:48px 24px;}
+.topbar{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;}
+.panel{background:#fff;border:1px solid var(--line);border-radius:6px;padding:32px;margin-bottom:24px;}
+.field{margin-bottom:16px;}
+.field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:3px;font-size:0.95rem;}
+.btn{background:var(--gold);color:var(--indigo-deep);border:none;padding:11px 20px;border-radius:3px;font-weight:700;cursor:pointer;}
+.btn.small{padding:7px 14px;font-size:0.85rem;}
+.btn.outline{background:none;border:1px solid var(--line);color:var(--ink);}
+.linkbtn{background:none;border:none;color:var(--teal);text-decoration:underline;cursor:pointer;font:inherit;padding:0;}
+.msg{padding:10px 12px;border-radius:4px;font-size:0.88rem;margin-bottom:14px;}
+.msg.err{background:#F6E3E3;color:var(--danger);}
+.msg.ok{background:#E4EFE9;color:var(--teal);}
+.card{border:1px solid var(--line);border-radius:5px;padding:18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+.card h4{margin-bottom:4px;}
+.card .meta{font-size:0.82rem;color:var(--teal);font-weight:600;margin-bottom:8px;}
+.card p{font-size:0.88rem;opacity:0.75;}
+.hide{display:none !important;}
+.empty{opacity:0.55;font-size:0.92rem;padding:20px 0;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>Qalam admin</h1>
+    <button class="linkbtn hide" id="logout-link" onclick="adminLogout()">Log out</button>
+  </div>
+  <p style="opacity:0.7;margin-top:6px;">Approve freelancer accounts before they appear on the public site.</p>
+
+  <div id="login-panel" class="panel" style="margin-top:24px;max-width:400px;">
+    <div id="login-msg"></div>
+    <div class="field">
+      <label style="display:block;font-size:0.84rem;font-weight:600;margin-bottom:5px;">Admin password</label>
+      <input type="password" id="admin-password" onkeydown="if(event.key==='Enter')adminLogin()">
+    </div>
+    <button class="btn" onclick="adminLogin()">Log in</button>
+  </div>
+
+  <div id="admin-content" class="hide">
+    <h2 style="font-size:1.2rem;margin:28px 0 14px;">Pending verification</h2>
+    <div id="pending-list"></div>
+
+    <h2 style="font-size:1.2rem;margin:32px 0 14px;">Already verified</h2>
+    <div id="verified-list"></div>
+  </div>
+</div>
+
+<script>
+async function api(pathname, opts={}) {
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  const res = await fetch(pathname, Object.assign({credentials:'include'}, opts, {headers}));
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || 'request failed');
+  return data;
+}
+
+async function checkAdminStatus() {
+  try {
+    const data = await api('/api/admin/status');
+    if (data.isAdmin) showAdmin(); else showLogin();
+  } catch (e) {
+    showLogin();
+  }
+}
+
+async function adminLogin() {
+  const msg = document.getElementById('login-msg');
+  msg.innerHTML = '';
+  try {
+    await api('/api/admin/login', {method:'POST', body: JSON.stringify({password: document.getElementById('admin-password').value})});
+    showAdmin();
+  } catch (err) {
+    msg.innerHTML = `<div class="msg err">${err.message}</div>`;
+  }
+}
+
+async function adminLogout() {
+  try { await api('/api/admin/logout', {method:'POST'}); } catch(e) {}
+  showLogin();
+}
+
+function showAdmin() {
+  document.getElementById('login-panel').classList.add('hide');
+  document.getElementById('admin-content').classList.remove('hide');
+  document.getElementById('logout-link').classList.remove('hide');
+  loadPending();
+  loadVerified();
+}
+function showLogin() {
+  document.getElementById('login-panel').classList.remove('hide');
+  document.getElementById('admin-content').classList.add('hide');
+  document.getElementById('logout-link').classList.add('hide');
+}
+
+async function loadPending() {
+  const el = document.getElementById('pending-list');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const data = await api('/api/admin/pending');
+    if (!data.pending.length) { el.innerHTML = '<div class="empty">Nobody waiting right now.</div>'; return; }
+    el.innerHTML = data.pending.map(f => `
+      <div class="card">
+        <div>
+          <h4>${escapeHtml(f.name)} <span style="font-weight:400;opacity:0.6;">(${escapeHtml(f.email)})</span></h4>
+          <div class="meta">${escapeHtml(f.skill||'')} · ${f.yearsExperience||0} yrs</div>
+          <p>${escapeHtml(f.bio||'')}</p>
+        </div>
+        <button class="btn small" onclick="verify('${f.id}')">Approve</button>
+      </div>`).join('');
+  } catch (err) {
+    if (err.message.includes('admin login')) { showLogin(); return; }
+    el.innerHTML = `<div class="msg err">${err.message}</div>`;
+  }
+}
+
+async function loadVerified() {
+  const el = document.getElementById('verified-list');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const data = await api('/api/admin/verified');
+    if (!data.verified.length) { el.innerHTML = '<div class="empty">No one verified yet.</div>'; return; }
+    el.innerHTML = data.verified.map(f => `
+      <div class="card">
+        <div>
+          <h4>${escapeHtml(f.name)} <span style="font-weight:400;opacity:0.6;">(${escapeHtml(f.email)})</span></h4>
+          <div class="meta">${escapeHtml(f.skill||'')} · ${f.yearsExperience||0} yrs</div>
+        </div>
+        <button class="btn small outline" onclick="unverify('${f.id}')">Revoke</button>
+      </div>`).join('');
+  } catch (err) {
+    el.innerHTML = `<div class="msg err">${err.message}</div>`;
+  }
+}
+
+async function verify(id) {
+  try { await api('/api/admin/verify/'+id, {method:'POST'}); loadPending(); loadVerified(); }
+  catch (err) { alert(err.message); }
+}
+async function unverify(id) {
+  try { await api('/api/admin/unverify/'+id, {method:'POST'}); loadPending(); loadVerified(); }
+  catch (err) { alert(err.message); }
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+checkAdminStatus();
+</script>
+</body>
+</html>
